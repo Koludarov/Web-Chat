@@ -1,0 +1,16 @@
+version: '3'
+
+services:
+  web-flask:
+    build:
+      context: ./backend
+    ports:
+      - "5000:5000"
+    depends_on:
+      - web-react
+
+  web-react:
+    build:
+      context: ./frontend
+    ports:
+      - "3000:3000"
