@@ -1,42 +1,62 @@
 import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
 
-const socket = io('http://localhost:5000/chat');
+const socket = io('http://localhost:8000');
 
-const Chat = ({ username, active_users }) => {
+const Chat = () => {
+  const [username, setUsername] = useState('');
   const [message, setMessage] = useState('');
-  const [chat, setChat] = useState([]);
+  const [messages, setMessages] = useState([]);
+  const [onlineUsers, setOnlineUsers] = useState(0);
 
   useEffect(() => {
-    socket.on('message', ({ msg }) => {
-      setChat([...chat, msg]);
+    socket.on('message', (message) => {
+      setMessages((messages) => [...messages, message]);
     });
+  }, []);
 
-    socket.on('status', ({ msg }) => {
-      setChat([...chat, msg]);
+  useEffect(() => {
+    socket.on('onlineUsers', (onlineUsers) => {
+      setOnlineUsers(onlineUsers);
     });
-  }, [chat]);
+  }, []);
 
-  const sendMessage = e => {
+  const handleSendMessage = (e) => {
     e.preventDefault();
-    socket.emit('text', { msg: message });
-    setMessage('');
+    if (message) {
+      socket.emit('sendMessage', { author: username, message });
+      setMessage('');
+    }
   };
 
   return (
     <div>
-      <h1>Welcome to the chat, {username}!</h1>
-      <h2>Online users: {active_users ? active_users.length : 0}</h2>
-
-      <div>
-        {chat.map((message, index) => (
-          <div key={index}>{message}</div>
-        ))}
-      </div>
-      <form onSubmit={sendMessage}>
-        <input type="text" value={message} onChange={e => setMessage(e.target.value)} />
+      <h1>Web Chat</h1>
+      <div>Online users: {onlineUsers}</div>
+      <form onSubmit={handleSendMessage}>
+        <input
+          type="text"
+          placeholder="Enter your username"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+        />
+        <br />
+        <input
+          type="text"
+          placeholder="Type a message..."
+          value={message}
+          onChange={(e) => setMessage(e.target.value)}
+        />
+        <br />
         <button type="submit">Send</button>
       </form>
+      <hr />
+      {messages.map((message, index) => (
+        <div key={index}>
+          <b>{message.author}: </b>
+          <span>{message.message}</span>
+        </div>
+      ))}
     </div>
   );
 };
