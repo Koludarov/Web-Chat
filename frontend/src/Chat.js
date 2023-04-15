@@ -1,62 +1,84 @@
 import React, { useState, useEffect } from 'react';
 import io from 'socket.io-client';
+import Message from './Message';
+import SendMessage from './SendMessage';
+import UsersOnline from './UsersOnline';
 
-const socket = io('http://localhost:8000');
+const socket = io('http://localhost:3001');
 
 const Chat = () => {
-  const [username, setUsername] = useState('');
-  const [message, setMessage] = useState('');
   const [messages, setMessages] = useState([]);
-  const [onlineUsers, setOnlineUsers] = useState(0);
+  const [username, setUsername] = useState('');
+  const [usersOnline, setUsersOnline] = useState(0);
 
   useEffect(() => {
+    socket.on('connect', () => {
+      console.log('connected to server');
+    });
+
     socket.on('message', (message) => {
       setMessages((messages) => [...messages, message]);
     });
-  }, []);
 
-  useEffect(() => {
-    socket.on('onlineUsers', (onlineUsers) => {
-      setOnlineUsers(onlineUsers);
+    socket.on('usersOnline', (count) => {
+      setUsersOnline(count);
     });
+
+    socket.on('userLeft', (count) => {
+      setUsersOnline(count);
+    });
+
+    return () => {
+      socket.off('connect');
+      socket.off('message');
+      socket.off('usersOnline');
+      socket.off('userLeft');
+    };
   }, []);
 
-  const handleSendMessage = (e) => {
-    e.preventDefault();
-    if (message) {
-      socket.emit('sendMessage', { author: username, message });
-      setMessage('');
-    }
+  const handleSendMessage = (message) => {
+    const messageObject = {
+      username: username,
+      message: message,
+    };
+
+    socket.emit('message', messageObject);
+  };
+
+  const handleUsernameChange = (event) => {
+    setUsername(event.target.value);
   };
 
   return (
-    <div>
-      <h1>Web Chat</h1>
-      <div>Online users: {onlineUsers}</div>
-      <form onSubmit={handleSendMessage}>
-        <input
-          type="text"
-          placeholder="Enter your username"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
+    <div className="chat">
+      <div className="header">
+        <h1>Web Chat</h1>
+        <UsersOnline count={usersOnline} />
+      </div>
+      <div className="messages">
+        {messages.map((message, index) => (
+          <Message
+            key={index}
+            username={message.username}
+            message={message.message}
+          />
+        ))}
+      </div>
+      {username ? (
+        <SendMessage
+          sendMessage={handleSendMessage}
         />
-        <br />
-        <input
-          type="text"
-          placeholder="Type a message..."
-          value={message}
-          onChange={(e) => setMessage(e.target.value)}
-        />
-        <br />
-        <button type="submit">Send</button>
-      </form>
-      <hr />
-      {messages.map((message, index) => (
-        <div key={index}>
-          <b>{message.author}: </b>
-          <span>{message.message}</span>
+      ) : (
+        <div className="username-container">
+          <h2>Enter a username to join the chat</h2>
+          <input
+            type="text"
+            value={username}
+            onChange={handleUsernameChange}
+            maxLength={15}
+          />
         </div>
-      ))}
+      )}
     </div>
   );
 };
